@@ -167,7 +167,7 @@ const resendVerificationCode = async (req, res) => {
     if (!student) return res.status(400).json({ message: 'User not found' });
     if (student.isActivated) return res.status(400).json({ message: 'User already activated' });
 
-    const activationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const activationCode = Math.floor(100000000000 + Math.random() * 900000000000).toString();
     student.activationCode = activationCode;
     await student.save();
 

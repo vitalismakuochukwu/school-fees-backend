@@ -295,16 +295,18 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // 3. SESSION CONFIGURATION
-// 3. SESSION CONFIGURATION
+// Ensure this is at the top
+const MongoStore = require('connect-mongo');
+
+// Update your session block to this simpler, more modern version
 app.use(session({
   secret: process.env.SESSION_SECRET || 'futo-portal-2026-secret',
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
     mongoUrl: process.env.MONGO_URI,
-    // Add these options for extra stability
-    mongoOptions: { useUnifiedTopology: true },
-    collectionName: 'sessions'
+    collectionName: 'sessions',
+    // Removed old options that cause issues in Mongoose 9+
   }),
   cookie: { 
     secure: process.env.NODE_ENV === 'production', 

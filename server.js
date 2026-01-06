@@ -288,7 +288,7 @@ app.set('trust proxy', 1);
 
 // 2. MIDDLEWARE
 app.use(cors({
-  origin: 'http://localhost:3000', 
+  origin: 'http://localhost:5173', 
   credentials: true 
 }));
 app.use(express.json());
@@ -370,16 +370,16 @@ mongoose.connect(process.env.MONGO_URI)
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
 app.get('/auth/google/callback', 
-  passport.authenticate('google', { failureRedirect: 'http://localhost:3000/login' }),
+  passport.authenticate('google', { failureRedirect: 'http://localhost:5173/login' }),
   (req, res) => {
-    res.redirect('http://localhost:3000/dashboard'); 
+    res.redirect('http://localhost:5173/dashboard'); 
 });
 
 app.get('/logout', (req, res, next) => {
   req.logout((err) => {
     if (err) return next(err);
     req.session.destroy();
-    res.redirect('http://localhost:3000/');
+    res.redirect('http://localhost:5173/');
   });
 });
 

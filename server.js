@@ -274,6 +274,7 @@ const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const jwt = require('jsonwebtoken'); // Required for bridging sessions to tokens
 
 // Route Imports
 const authRoutes = require('./routes/authRoutes');
@@ -325,6 +326,7 @@ passport.use(new GoogleStrategy({
     try {
       const email = profile.emails[0].value;
       
+      // Using findOneAndUpdate with $setOnInsert to handle RegNo/Dept/Faculty
       let student = await Student.findOneAndUpdate(
         { email: email },
         { 
@@ -332,7 +334,14 @@ passport.use(new GoogleStrategy({
             googleId: profile.id, 
             fullName: profile.displayName,
             isActivated: true 
-          } 
+          },
+          $setOnInsert: { 
+            // These fields only save the VERY FIRST time the user signs up
+            regNo: "NOT_SET_" + profile.id.slice(-4), 
+            department: "Please Update",
+            faculty: "Please Update",
+            password: Math.random().toString(36).slice(-10) // Dummy password for safety
+          }
         },
         { new: true, upsert: true, setDefaultsOnInsert: true }
       );
@@ -366,7 +375,7 @@ mongoose.connect(process.env.MONGO_URI)
     process.exit(1);
   });
 
-// 7. AUTH ROUTES (Updated with /api/auth/me)
+// 7. AUTH ROUTES
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
 app.get('/auth/google/callback', 
@@ -375,13 +384,22 @@ app.get('/auth/google/callback',
     res.redirect('http://localhost:5173/dashboard'); 
 });
 
-// NEW ROUTE: Checks if user is logged in via Google
+// UPDATED ME ROUTE: Now generates a JWT token for the session user
 app.get('/api/auth/me', (req, res) => {
   if (req.isAuthenticated && req.isAuthenticated()) {
-    // If Passport finds a session, it sends the student data to the frontend
-    res.json(req.user);
+    // Generate a JWT token so Google users can call protected /api routes
+    const token = jwt.sign(
+      { id: req.user._id }, 
+      process.env.JWT_SECRET, 
+      { expiresIn: '1d' }
+    );
+
+    // Return the user data PLUS the token
+    res.json({
+      ...req.user.toObject(),
+      token: token
+    });
   } else {
-    // No session found
     res.status(401).json({ message: "Not authenticated" });
   }
 });
@@ -395,7 +413,7 @@ app.get('/logout', (req, res, next) => {
 });
 
 // 8. OTHER API ROUTES
-app.use('/api/auth', authRoutes); 
+app.use('/auth', authRoutes); 
 app.use('/api', feeRoutes);
 
 // 9. START SERVER

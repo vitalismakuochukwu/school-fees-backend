@@ -295,19 +295,39 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // 3. SESSION CONFIGURATION
+// app.use(session({
+//   secret: process.env.SESSION_SECRET || 'futo-portal-2026-secret',
+//   resave: false,
+//   saveUninitialized: false,
+//   store: MongoStore.create({
+//     mongoUrl: process.env.MONGO_URI,
+//     collectionName: 'sessions'
+//   }),
+//   cookie: { 
+//     secure: process.env.NODE_ENV === 'production', // true on Render
+//     httpOnly: true, 
+//     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+//     maxAge: 24 * 60 * 60 * 1000 // 24 hours
+//   }
+// }));
+// Change your import to this:
+const MongoStore = require('connect-mongo');
+
+// ... in your session middleware, update the store section:
 app.use(session({
   secret: process.env.SESSION_SECRET || 'futo-portal-2026-secret',
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
     mongoUrl: process.env.MONGO_URI,
-    collectionName: 'sessions'
+    collectionName: 'sessions',
+    ttl: 24 * 60 * 60 // 1 day
   }),
   cookie: { 
-    secure: process.env.NODE_ENV === 'production', // true on Render
+    secure: process.env.NODE_ENV === 'production', 
     httpOnly: true, 
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    maxAge: 24 * 60 * 60 * 1000 
   }
 }));
 

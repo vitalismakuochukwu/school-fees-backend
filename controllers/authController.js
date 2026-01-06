@@ -7,12 +7,13 @@ const crypto = require('crypto');
 // 1. Setup the transporter
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
-  port: 587,
-  secure: false, // Use TLS
+  port: 465,
+  secure: true, // Use SSL
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
   },
+  connectionTimeout: 10000, // 10 seconds
   tls: {
     rejectUnauthorized: false // Helps avoid connection blocks on cloud servers
   }

@@ -258,66 +258,43 @@
 const Student = require('../models/Student');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const nodemailer = require('nodemailer');
 const crypto = require('crypto');
+const { Resend } = require('resend');
 
-// 1. Setup the transporter (Fixed for Render/Gmail Port 465)
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true, // Use SSL
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  },
-  tls: {
-    rejectUnauthorized: false
-  }
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-// 2. Send Verification Email
+// Helper: Send Verification Email
 async function sendVerificationEmail(userEmail, verificationCode) {
-  const mailOptions = {
-    from: process.env.EMAIL_USER,
-    to: userEmail,
-    subject: 'Your 12-Digit Activation Code',
-    html: `
-      <div style="font-family: Arial, sans-serif; border: 2px solid #ca8a04; padding: 20px; border-radius: 10px;">
-        <h2 style="color: #ca8a04;">FUTO School Fees Portal</h2>
-        <p>Use the 12-digit code below to activate your account:</p>
-        <h1 style="background: #fefce8; padding: 10px; text-align: center; letter-spacing: 4px; color: #1f2937;">
-          ${verificationCode}
-        </h1>
-        <p>If you did not request this, please ignore this email.</p>
-      </div>
-    `
-  };
-
   try {
-    await transporter.sendMail(mailOptions);
+    await resend.emails.send({
+      from: 'FUTO Portal <onboarding@resend.dev>',
+      to: userEmail,
+      subject: 'Your 12-Digit Activation Code',
+      html: `
+        <div style="font-family: Arial, sans-serif; border: 2px solid #ca8a04; padding: 20px; border-radius: 10px;">
+          <h2 style="color: #ca8a04;">FUTO School Fees Portal</h2>
+          <p>Your 12-digit activation code is:</p>
+          <h1 style="background: #fefce8; padding: 10px; text-align: center; letter-spacing: 4px; color: #1f2937;">${verificationCode}</h1>
+        </div>`
+    });
     console.log("✅ Email sent successfully to: " + userEmail);
   } catch (error) {
-    console.error("❌ Error sending email:", error);
+    console.error("❌ Resend API Error:", error);
   }
 }
 
+// Helper: Send Reset Password Email
 async function sendResetPasswordEmail(userEmail, resetToken) {
-  const resetLink = `https://school-fees-backend.onrender.com/reset-password/${resetToken}`;
-  
-  const mailOptions = {
-    from: process.env.EMAIL_USER,
-    to: userEmail,
-    subject: 'Password Reset Request - FUTO PAY',
-    html: `<h2>Reset Your Password</h2>
-           <p>Click the link to reset:</p>
-           <a href="${resetLink}" style="padding: 10px 20px; background: #d97706; color: white; text-decoration: none;">Reset Password</a>`
-  };
-
+  const resetLink = `http://localhost:5173/reset-password/${resetToken}`; 
   try {
-    await transporter.sendMail(mailOptions);
-    console.log("✅ Reset email sent to: " + userEmail);
+    await resend.emails.send({
+      from: 'FUTO Portal <onboarding@resend.dev>',
+      to: userEmail,
+      subject: 'Password Reset Request',
+      html: `<p>Click the link to reset your password: <a href="${resetLink}">${resetLink}</a></p>`
+    });
   } catch (error) {
-    console.error("❌ Error sending reset email:", error);
+    console.error("❌ Reset Email Error:", error);
   }
 }
 
@@ -325,39 +302,25 @@ async function sendResetPasswordEmail(userEmail, resetToken) {
 const register = async (req, res) => {
   try {
     const { fullName, regNo, department, faculty, email, password } = req.body;
-
     if (!fullName || !regNo || !department || !faculty || !email || !password) {
       return res.status(400).json({ message: 'Please fill in all fields.' });
     }
-
     const existingStudent = await Student.findOne({ $or: [{ email }, { regNo }] });
-    if (existingStudent) {
-      return res.status(400).json({ message: 'Student already exists.' });
-    }
+    if (existingStudent) return res.status(400).json({ message: 'Student already exists.' });
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-
-    // Generate 12 digit activation code
     const activationCode = Math.floor(100000000000 + Math.random() * 900000000000).toString();
 
     const newStudent = new Student({
       fullName, regNo, department, faculty, email,
-      password: hashedPassword,
-      activationCode,
-      isActivated: false
+      password: hashedPassword, activationCode, isActivated: false
     });
 
     await newStudent.save();
-
-    console.log(`ACTIVATION CODE for ${email}: ${activationCode}`);
-    
-    // Call the new Resend function
     await sendVerificationEmail(email, activationCode);
-
-    res.status(201).json({ message: 'Registration successful! Check your email.', email });
+    res.status(201).json({ message: 'Registration successful!', email });
   } catch (error) {
-    console.error('Registration Error:', error);
     res.status(500).json({ message: 'Server error during registration.' });
   }
 };
@@ -367,18 +330,15 @@ const verifyEmail = async (req, res) => {
   try {
     const { email, code } = req.body;
     const student = await Student.findOne({ email });
-
-    if (!student) return res.status(400).json({ message: 'User not found' });
-    if (student.isActivated) return res.status(400).json({ message: 'User already activated' });
-    if (student.activationCode !== code) return res.status(400).json({ message: 'Invalid activation code' });
-
+    if (!student || student.activationCode !== code) {
+        return res.status(400).json({ message: 'Invalid code or user not found' });
+    }
     student.isActivated = true;
-    student.activationCode = undefined; 
+    student.activationCode = undefined;
     await student.save();
-
     res.status(200).json({ message: 'Account activated successfully.' });
   } catch (error) {
-    res.status(500).json({ message: 'Server error during verification' });
+    res.status(500).json({ message: 'Verification error' });
   }
 };
 
@@ -387,41 +347,36 @@ const login = async (req, res) => {
   try {
     const { email, password } = req.body;
     const student = await Student.findOne({ email });
-    if (!student) return res.status(400).json({ message: 'Invalid credentials' });
-
-    if (!student.isActivated) {
-      return res.status(400).json({ message: 'Please activate your account first.' });
+    if (!student || !student.isActivated) {
+      return res.status(400).json({ message: 'Invalid credentials or account not activated' });
     }
-
     const isMatch = await bcrypt.compare(password, student.password);
     if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
     const token = jwt.sign({ id: student._id }, process.env.JWT_SECRET || 'secret_key', { expiresIn: '1h' });
     res.json({ token, user: { fullName: student.fullName, regNo: student.regNo } });
   } catch (error) {
-    res.status(500).json({ message: 'Server error during login.' });
+    res.status(500).json({ message: 'Login error' });
   }
 };
 
-// Resend Verification Code Controller
+// Resend Verification
 const resendVerificationCode = async (req, res) => {
   try {
     const { email } = req.body;
     const student = await Student.findOne({ email });
-
     if (!student) return res.status(400).json({ message: 'User not found' });
-    if (student.isActivated) return res.status(400).json({ message: 'User already activated' });
-
     const activationCode = Math.floor(100000000000 + Math.random() * 900000000000).toString();
     student.activationCode = activationCode;
     await student.save();
-
     await sendVerificationEmail(email, activationCode);
-    res.status(200).json({ message: 'Verification code resent successfully.' });
+    res.status(200).json({ message: 'Code resent successfully.' });
   } catch (error) {
-    res.status(500).json({ message: 'Server error during resend.' });
+    res.status(500).json({ message: 'Resend error' });
   }
 };
+
+// --- RESTORED FUNCTIONS BELOW ---
 
 // Forgot Password Controller
 const forgotPassword = async (req, res) => {
@@ -436,23 +391,22 @@ const forgotPassword = async (req, res) => {
 
     await student.save();
     await sendResetPasswordEmail(email, resetToken);
-
-    res.status(200).json({ message: 'Password reset email sent successfully' });
+    res.status(200).json({ message: 'Password reset email sent' });
   } catch (error) {
-    console.error('Forgot Password Error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Forgot password error' });
   }
 };
 
-// Get Profile Controller
+// Get Profile Controller (FIXES YOUR DASHBOARD)
 const getProfile = async (req, res) => {
   try {
+    // req.user.id is added by your auth middleware
     const student = await Student.findById(req.user.id).select('-password');
     if (!student) return res.status(404).json({ message: 'Student not found' });
     res.json(student);
   } catch (error) {
-    console.error('Get Profile Error:', error);
-    res.status(500).json({ message: 'Server error fetching profile' });
+    console.error('Profile Error:', error);
+    res.status(500).json({ message: 'Error fetching profile' });
   }
 };
 
@@ -471,8 +425,7 @@ const updateProfile = async (req, res) => {
     await student.save();
     res.json({ message: 'Profile updated successfully', student });
   } catch (error) {
-    console.error('Update Profile Error:', error);
-    res.status(500).json({ message: 'Server error updating profile' });
+    res.status(500).json({ message: 'Update error' });
   }
 };
 

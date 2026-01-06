@@ -59,6 +59,11 @@ const register = async (req, res) => {
   try {
     const { fullName, regNo, department, faculty, email, password } = req.body;
 
+    // 1. Validate input fields
+    if (!fullName || !regNo || !department || !faculty || !email || !password) {
+      return res.status(400).json({ message: 'Please fill in all fields, including Faculty.' });
+    }
+
     // 1. Check if student already exists (by email or regNo)
     const existingStudent = await Student.findOne({ 
       $or: [{ email }, { regNo }] 

@@ -6,15 +6,16 @@ const crypto = require('crypto');
 
 // 1. Setup the transporter
 const transporter = nodemailer.createTransport({
+  pool: true,                // Keeps connection open
   host: "smtp.gmail.com",
-  port: 587,
-  secure: false, // This must be false for 587
+  port: 587,                 // Port 587 is the standard for Render
+  secure: false,             // Must be false for 587
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
   },
   tls: {
-    rejectUnauthorized: false // This stops Render from blocking the connection
+    rejectUnauthorized: false // Bypasses the handshake timeout
   }
 });
 // 2. The function to send the code

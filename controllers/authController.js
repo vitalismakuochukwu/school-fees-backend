@@ -258,51 +258,66 @@
 const Student = require('../models/Student');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
 const crypto = require('crypto');
-const { Resend } = require('resend'); // 1. Import Resend
 
-// 2. Initialize Resend with your API Key
-const resend = new Resend(process.env.RESEND_API_KEY);
+// 1. Setup the transporter (Fixed for Render/Gmail Port 465)
+const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true, // Use SSL
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  },
+  tls: {
+    rejectUnauthorized: false
+  }
+});
 
-// 3. Updated Helper Function to send emails via API (No more Port timeouts!)
+// 2. Send Verification Email
 async function sendVerificationEmail(userEmail, verificationCode) {
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: userEmail,
+    subject: 'Your 12-Digit Activation Code',
+    html: `
+      <div style="font-family: Arial, sans-serif; border: 2px solid #ca8a04; padding: 20px; border-radius: 10px;">
+        <h2 style="color: #ca8a04;">FUTO School Fees Portal</h2>
+        <p>Use the 12-digit code below to activate your account:</p>
+        <h1 style="background: #fefce8; padding: 10px; text-align: center; letter-spacing: 4px; color: #1f2937;">
+          ${verificationCode}
+        </h1>
+        <p>If you did not request this, please ignore this email.</p>
+      </div>
+    `
+  };
+
   try {
-    await resend.emails.send({
-      from: 'FUTO Portal <onboarding@resend.dev>', // Required for Resend free tier
-      to: userEmail,
-      subject: 'Your 12-Digit Activation Code',
-      html: `
-        <div style="font-family: Arial, sans-serif; border: 2px solid #ca8a04; padding: 20px; border-radius: 10px;">
-          <h2 style="color: #ca8a04;">FUTO School Fees Portal</h2>
-          <p>Use the 12-digit code below to activate your account:</p>
-          <h1 style="background: #fefce8; padding: 10px; text-align: center; letter-spacing: 4px; color: #1f2937;">
-            ${verificationCode}
-          </h1>
-          <p>If you did not request this, please ignore this email.</p>
-        </div>
-      `
-    });
-    console.log("✅ Email sent successfully via Resend to: " + userEmail);
+    await transporter.sendMail(mailOptions);
+    console.log("✅ Email sent successfully to: " + userEmail);
   } catch (error) {
-    console.error("❌ Resend API Error:", error);
+    console.error("❌ Error sending email:", error);
   }
 }
 
 async function sendResetPasswordEmail(userEmail, resetToken) {
-  const resetLink = `https://school-fees-backend.onrender.com/reset-password/${resetToken}`; 
+  const resetLink = `https://school-fees-backend.onrender.com/reset-password/${resetToken}`;
+  
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: userEmail,
+    subject: 'Password Reset Request - FUTO PAY',
+    html: `<h2>Reset Your Password</h2>
+           <p>Click the link to reset:</p>
+           <a href="${resetLink}" style="padding: 10px 20px; background: #d97706; color: white; text-decoration: none;">Reset Password</a>`
+  };
 
   try {
-    await resend.emails.send({
-      from: 'FUTO Portal <onboarding@resend.dev>',
-      to: userEmail,
-      subject: 'Password Reset Request - FUTO PAY',
-      html: `<h2>Reset Your Password</h2>
-             <p>Click the link to reset:</p>
-             <a href="${resetLink}" style="padding: 10px 20px; background: #d97706; color: white; text-decoration: none;">Reset Password</a>`
-    });
-    console.log("✅ Reset email sent via Resend to: " + userEmail);
+    await transporter.sendMail(mailOptions);
+    console.log("✅ Reset email sent to: " + userEmail);
   } catch (error) {
-    console.error("❌ Resend Reset Error:", error);
+    console.error("❌ Error sending reset email:", error);
   }
 }
 

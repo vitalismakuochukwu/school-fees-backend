@@ -295,14 +295,16 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // 3. SESSION CONFIGURATION
+// 3. SESSION CONFIGURATION
 app.use(session({
   secret: process.env.SESSION_SECRET || 'futo-portal-2026-secret',
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
     mongoUrl: process.env.MONGO_URI,
-    collectionName: 'sessions',
-    ttl: 24 * 60 * 60 // 1 day
+    // Add these options for extra stability
+    mongoOptions: { useUnifiedTopology: true },
+    collectionName: 'sessions'
   }),
   cookie: { 
     secure: process.env.NODE_ENV === 'production', 

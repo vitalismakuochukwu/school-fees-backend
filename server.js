@@ -271,7 +271,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const session = require('express-session');
-const MongoStore = require('connect-mongo'); // Declared only once here
+const MongoStore = require('connect-mongo');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
@@ -366,13 +366,24 @@ mongoose.connect(process.env.MONGO_URI)
     process.exit(1);
   });
 
-// 7. AUTH ROUTES
+// 7. AUTH ROUTES (Updated with /api/auth/me)
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
 app.get('/auth/google/callback', 
   passport.authenticate('google', { failureRedirect: 'http://localhost:5173/login' }),
   (req, res) => {
     res.redirect('http://localhost:5173/dashboard'); 
+});
+
+// NEW ROUTE: Checks if user is logged in via Google
+app.get('/api/auth/me', (req, res) => {
+  if (req.isAuthenticated && req.isAuthenticated()) {
+    // If Passport finds a session, it sends the student data to the frontend
+    res.json(req.user);
+  } else {
+    // No session found
+    res.status(401).json({ message: "Not authenticated" });
+  }
 });
 
 app.get('/logout', (req, res, next) => {
@@ -384,7 +395,7 @@ app.get('/logout', (req, res, next) => {
 });
 
 // 8. OTHER API ROUTES
-app.use('/api/auth', authRoutes); // Added /auth to match your frontend fetch calls
+app.use('/api/auth', authRoutes); 
 app.use('/api', feeRoutes);
 
 // 9. START SERVER

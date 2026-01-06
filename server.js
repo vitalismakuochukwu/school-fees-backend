@@ -413,7 +413,7 @@ app.get('/logout', (req, res, next) => {
 });
 
 // 8. OTHER API ROUTES
-app.use('/auth', authRoutes); 
+app.use('/api', authRoutes); 
 app.use('/api', feeRoutes);
 
 // 9. START SERVER

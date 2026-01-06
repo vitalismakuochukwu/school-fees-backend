@@ -39,7 +39,10 @@ const studentSchema = new mongoose.Schema({
   },
   activationCode: {
     type: String
-  }
+  },
+  resetPasswordToken: String,
+  resetPasswordExpire: Date,
+  payments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Payment' }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('Student', studentSchema);

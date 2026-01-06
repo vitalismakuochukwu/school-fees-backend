@@ -2,6 +2,7 @@ const Student = require('../models/Student');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 
 // 1. Setup the transporter
 const transporter = nodemailer.createTransport({
@@ -27,6 +28,29 @@ async function sendVerificationEmail(userEmail, verificationCode) {
     console.log("✅ Email sent successfully to: " + userEmail);
   } catch (error) {
     console.error("❌ Error sending email:", error);
+  }
+}
+
+async function sendResetPasswordEmail(userEmail, resetToken) {
+  const resetLink = `http://localhost:3000/reset-password/${resetToken}`; // Adjust URL for production if needed
+
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: userEmail,
+    subject: 'Password Reset Request - FUTO PAY',
+    html: `<div style="font-family: Arial, sans-serif; padding: 20px;">
+              <h2>Reset Your Password</h2>
+              <p>Click the following link to reset your password:</p>
+              <a href="${resetLink}" style="background-color: #d97706; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Reset Password</a>
+              <p>This link is valid for 1 hour. If you did not request a password reset, please ignore this email.</p>
+           </div>`
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log("✅ Reset password email sent successfully to: " + userEmail);
+  } catch (error) {
+    console.error("❌ Error sending reset password email:", error);
   }
 }
 
@@ -129,6 +153,54 @@ const login = async (req, res) => {
     res.status(500).json({ message: 'Server error during login.' });
   }
 };
+// Resend Verification Code Controller
+const resendVerificationCode = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const student = await Student.findOne({ email });
+
+    if (!student) return res.status(400).json({ message: 'User not found' });
+    if (student.isActivated) return res.status(400).json({ message: 'User already activated' });
+
+    const activationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    student.activationCode = activationCode;
+    await student.save();
+
+    await sendVerificationEmail(email, activationCode);
+    res.status(200).json({ message: 'Verification code resent successfully.' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error during resend.' });
+  }
+};
+
+// Forgot Password Controller
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // Find the student by email
+    const student = await Student.findOne({ email });
+    if (!student) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Generate a reset token with crypto
+    const resetToken = crypto.randomBytes(20).toString('hex');
+    student.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    student.resetPasswordExpire = Date.now() + 60 * 60 * 1000; // Token expires in 1 hour
+
+    await student.save();
+
+    // Send reset password email
+    await sendResetPasswordEmail(email, resetToken);
+
+    res.status(200).json({ message: 'Password reset email sent successfully' });
+
+  } catch (error) {
+    console.error('Forgot Password Error:', error);
+    res.status(500).json({ message: 'Server error during forgot password request.' });
+  }
+};
 
 // Get Profile Controller
 const getProfile = async (req, res) => {
@@ -144,6 +216,7 @@ const getProfile = async (req, res) => {
     res.status(500).json({ message: 'Server error fetching profile' });
   }
 };
+
 
 // Update Profile Controller
 const updateProfile = async (req, res) => {
@@ -171,4 +244,4 @@ const updateProfile = async (req, res) => {
   }
 };
 
-module.exports = { register, login, verifyEmail, getProfile, updateProfile };
+module.exports = { register, login, verifyEmail, resendVerificationCode, forgotPassword, getProfile, updateProfile };

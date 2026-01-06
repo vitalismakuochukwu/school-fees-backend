@@ -142,15 +142,11 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const session = require('express-session');
 const MongoStore = require('connect-mongo'); // Try this first
-// OR IF THAT FAILS, USE:
-// const { default: MongoStore } = require('connect-mongo');
-// const session = require('express-session');
-// const MongoStore = require('connect-mongo'); // 1. Added MongoStore
+
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
 const authRoutes = require('./routes/authRoutes');
-const studentRoutes = require('./routes/studentRoutes');
 const feeRoutes = require('./routes/feeRoutes');
 const Student = require('./models/Student');
 
@@ -165,15 +161,6 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 3. REPLACED SESSION MIDDLEWARE (Now using MongoStore)
-// app.use(session({
-//   secret: process.env.SESSION_SECRET || 'hostel-portal-security-string-2026', 
-//   resave: false,
-//   saveUninitialized: false,
-//   store: MongoStore.create({
-//     mongoUrl: process.env.MONGO_URI, // Uses your MongoDB connection string
-//     collectionName: 'sessions'       // Stores session data in 'sessions' collection
-//   }),
 // This version handles the modern export structure
 app.use(session({
   secret: process.env.SESSION_SECRET || 'hostel-portal-security-string-2026',
@@ -201,7 +188,7 @@ app.use(passport.session());
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: "http://localhost:5000/auth/google/callback"
+    callbackURL: "https://school-fees-backend.onrender.com/auth/google/callback"
   },
   async (accessToken, refreshToken, profile, done) => {
     try {
@@ -256,8 +243,6 @@ mongoose.connect(MONGO_URI)
   });
 
 // 8. Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/student', studentRoutes);
 app.use('/api', authRoutes);
 app.use('/api', feeRoutes);
 

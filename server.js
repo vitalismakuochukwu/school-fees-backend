@@ -288,32 +288,13 @@ app.set('trust proxy', 1);
 
 // 2. MIDDLEWARE
 app.use(cors({
-  origin: 'http://localhost:3000', // Your local frontend
-  credentials: true // Allows session cookies to be sent
+  origin: 'http://localhost:3000', // Allow your local React frontend
+  credentials: true // Crucial for sessions/cookies
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // 3. SESSION CONFIGURATION
-// app.use(session({
-//   secret: process.env.SESSION_SECRET || 'futo-portal-2026-secret',
-//   resave: false,
-//   saveUninitialized: false,
-//   store: MongoStore.create({
-//     mongoUrl: process.env.MONGO_URI,
-//     collectionName: 'sessions'
-//   }),
-//   cookie: { 
-//     secure: process.env.NODE_ENV === 'production', // true on Render
-//     httpOnly: true, 
-//     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-//     maxAge: 24 * 60 * 60 * 1000 // 24 hours
-//   }
-// }));
-// Change your import to this:
-const MongoStore = require('connect-mongo');
-
-// ... in your session middleware, update the store section:
 app.use(session({
   secret: process.env.SESSION_SECRET || 'futo-portal-2026-secret',
   resave: false,
@@ -339,14 +320,13 @@ app.use(passport.session());
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    // Using a relative path here is safer for dynamic environments
     callbackURL: "/auth/google/callback" 
   },
   async (accessToken, refreshToken, profile, done) => {
     try {
       const email = profile.emails[0].value;
       
-      // Upsert: Find student by email and update googleId, or create if not exists
+      // Upsert: Find student by email and update or create
       let student = await Student.findOneAndUpdate(
         { email: email },
         { 
@@ -389,18 +369,18 @@ mongoose.connect(process.env.MONGO_URI)
   });
 
 // 7. AUTH ROUTES
-// Initial Google Login
+// Google OAuth Entry
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
-// Google Callback
+// Google OAuth Callback
 app.get('/auth/google/callback', 
   passport.authenticate('google', { failureRedirect: 'http://localhost:3000/login' }),
   (req, res) => {
-    // Redirect back to your local frontend dashboard
+    // Successfully authenticated, redirect to your local frontend
     res.redirect('http://localhost:3000/dashboard'); 
 });
 
-// Logout
+// Logout Route
 app.get('/logout', (req, res, next) => {
   req.logout((err) => {
     if (err) return next(err);

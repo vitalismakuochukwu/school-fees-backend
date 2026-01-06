@@ -271,7 +271,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const session = require('express-session');
-const MongoStore = require('connect-mongo');
+const MongoStore = require('connect-mongo'); // Declared only once here
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
@@ -288,17 +288,13 @@ app.set('trust proxy', 1);
 
 // 2. MIDDLEWARE
 app.use(cors({
-  origin: 'http://localhost:3000', // Allow your local React frontend
-  credentials: true // Crucial for sessions/cookies
+  origin: 'http://localhost:3000', 
+  credentials: true 
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // 3. SESSION CONFIGURATION
-// Ensure this is at the top
-const MongoStore = require('connect-mongo');
-
-// Update your session block to this simpler, more modern version
 app.use(session({
   secret: process.env.SESSION_SECRET || 'futo-portal-2026-secret',
   resave: false,
@@ -306,7 +302,6 @@ app.use(session({
   store: MongoStore.create({
     mongoUrl: process.env.MONGO_URI,
     collectionName: 'sessions',
-    // Removed old options that cause issues in Mongoose 9+
   }),
   cookie: { 
     secure: process.env.NODE_ENV === 'production', 
@@ -330,7 +325,6 @@ passport.use(new GoogleStrategy({
     try {
       const email = profile.emails[0].value;
       
-      // Upsert: Find student by email and update or create
       let student = await Student.findOneAndUpdate(
         { email: email },
         { 
@@ -373,18 +367,14 @@ mongoose.connect(process.env.MONGO_URI)
   });
 
 // 7. AUTH ROUTES
-// Google OAuth Entry
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
-// Google OAuth Callback
 app.get('/auth/google/callback', 
   passport.authenticate('google', { failureRedirect: 'http://localhost:3000/login' }),
   (req, res) => {
-    // Successfully authenticated, redirect to your local frontend
     res.redirect('http://localhost:3000/dashboard'); 
 });
 
-// Logout Route
 app.get('/logout', (req, res, next) => {
   req.logout((err) => {
     if (err) return next(err);
@@ -394,10 +384,10 @@ app.get('/logout', (req, res, next) => {
 });
 
 // 8. OTHER API ROUTES
-app.use('/api', authRoutes);
+app.use('/api/auth', authRoutes); // Added /auth to match your frontend fetch calls
 app.use('/api', feeRoutes);
 
 // 9. START SERVER
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });

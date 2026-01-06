@@ -7,18 +7,19 @@ const crypto = require('crypto');
 // 1. Setup the transporter
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
-  port: 465,
-  secure: true, // Use SSL
+  port: 587,
+  secure: false, // Must be false for 587
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
   },
-  connectionTimeout: 10000, // 10 seconds
   tls: {
-    rejectUnauthorized: false // Helps avoid connection blocks on cloud servers
-  }
+    rejectUnauthorized: false, // Essential for cloud servers
+    minVersion: "TLSv1.2"
+  },
+  connectionTimeout: 20000, // 20 seconds
+  greetingTimeout: 20000
 });
-
 // 2. The function to send the code
 async function sendVerificationEmail(userEmail, verificationCode) {
   const mailOptions = {

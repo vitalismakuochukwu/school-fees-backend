@@ -289,7 +289,7 @@ async function sendVerificationEmail(userEmail, verificationCode) {
 }
 
 async function sendResetPasswordEmail(userEmail, resetToken) {
-  const resetLink = `http://localhost:5173/reset-password/${resetToken}`; 
+  const resetLink = `https://school-fees-backend.onrender.com/reset-password/${resetToken}`; 
 
   try {
     await resend.emails.send({
@@ -408,9 +408,57 @@ const resendVerificationCode = async (req, res) => {
   }
 };
 
-// Forgot Password, Get Profile, and Update Profile remain the same...
-const forgotPassword = async (req, res) => { /* logic */ };
-const getProfile = async (req, res) => { /* logic */ };
-const updateProfile = async (req, res) => { /* logic */ };
+// Forgot Password Controller
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const student = await Student.findOne({ email });
+    if (!student) return res.status(404).json({ message: 'User not found' });
+
+    const resetToken = crypto.randomBytes(20).toString('hex');
+    student.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    student.resetPasswordExpire = Date.now() + 60 * 60 * 1000; 
+
+    await student.save();
+    await sendResetPasswordEmail(email, resetToken);
+
+    res.status(200).json({ message: 'Password reset email sent successfully' });
+  } catch (error) {
+    console.error('Forgot Password Error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Get Profile Controller
+const getProfile = async (req, res) => {
+  try {
+    const student = await Student.findById(req.user.id).select('-password');
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+    res.json(student);
+  } catch (error) {
+    console.error('Get Profile Error:', error);
+    res.status(500).json({ message: 'Server error fetching profile' });
+  }
+};
+
+// Update Profile Controller
+const updateProfile = async (req, res) => {
+  try {
+    const { fullName, regNo, department, faculty } = req.body;
+    const student = await Student.findById(req.user.id);
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+
+    if (fullName) student.fullName = fullName;
+    if (regNo) student.regNo = regNo;
+    if (department) student.department = department;
+    if (faculty) student.faculty = faculty;
+
+    await student.save();
+    res.json({ message: 'Profile updated successfully', student });
+  } catch (error) {
+    console.error('Update Profile Error:', error);
+    res.status(500).json({ message: 'Server error updating profile' });
+  }
+};
 
 module.exports = { register, login, verifyEmail, resendVerificationCode, forgotPassword, getProfile, updateProfile };

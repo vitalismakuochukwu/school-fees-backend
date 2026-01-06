@@ -384,26 +384,56 @@ app.get('/auth/google/callback',
     res.redirect('http://localhost:5173/dashboard'); 
 });
 
-// UPDATED ME ROUTE: Now generates a JWT token for the session user
-app.get('/api/auth/me', (req, res) => {
-  if (req.isAuthenticated && req.isAuthenticated()) {
-    // Generate a JWT token so Google users can call protected /api routes
-    const token = jwt.sign(
-      { id: req.user._id }, 
-      process.env.JWT_SECRET, 
-      { expiresIn: '1d' }
-    );
+// // UPDATED ME ROUTE: Now generates a JWT token for the session user
+// app.get('/api/auth/me', (req, res) => {
+//   if (req.isAuthenticated && req.isAuthenticated()) {
+//     // Generate a JWT token so Google users can call protected /api routes
+//     const token = jwt.sign(
+//       { id: req.user._id }, 
+//       process.env.JWT_SECRET, 
+//       { expiresIn: '1d' }
+//     );
 
-    // Return the user data PLUS the token
-    res.json({
-      ...req.user.toObject(),
-      token: token
-    });
-  } else {
-    res.status(401).json({ message: "Not authenticated" });
+//     // Return the user data PLUS the token
+//     res.json({
+//       ...req.user.toObject(),
+//       token: token
+//     });
+//   } else {
+//     res.status(401).json({ message: "Not authenticated" });
+//   }
+// });
+// UPDATED ME ROUTE: Now with a 'try-catch' safety net
+app.get('/api/auth/me', (req, res) => {
+  try {
+    if (req.isAuthenticated && req.isAuthenticated()) {
+      // 1. Check if the secret exists
+      if (!process.env.JWT_SECRET) {
+        console.error("FATAL: JWT_SECRET is missing from Environment Variables");
+        return res.status(500).json({ message: "Server configuration error (JWT)" });
+      }
+
+      // 2. Try to generate the token
+      const token = jwt.sign(
+        { id: req.user._id }, 
+        process.env.JWT_SECRET, 
+        { expiresIn: '1d' }
+      );
+
+      // 3. Send successful response
+      res.json({
+        ...req.user.toObject(),
+        token: token
+      });
+    } else {
+      res.status(401).json({ message: "Not authenticated" });
+    }
+  } catch (error) {
+    // This logs the REAL error to your Render dashboard logs
+    console.error("CRASH in /api/auth/me:", error);
+    res.status(500).json({ message: "Internal server error", error: error.message });
   }
 });
-
 app.get('/logout', (req, res, next) => {
   req.logout((err) => {
     if (err) return next(err);

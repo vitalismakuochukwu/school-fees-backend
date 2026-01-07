@@ -9,4 +9,7 @@ router.get('/current', feeController.getCurrentFee);
 // Protected route to mark payment as paid
 router.post('/mark-as-paid', authMiddleware, feeController.markAsPaid);
 
+// Admin route to update fee (Protected by secret key in body)
+router.post('/update', feeController.updateFee);
+
 module.exports = router;

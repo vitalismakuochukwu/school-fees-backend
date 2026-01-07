@@ -44,4 +44,23 @@ const getCurrentFee = async (req, res) => {
   }
 };
 
-module.exports = { markAsPaid, getCurrentFee };
+const updateFee = async (req, res) => {
+  const { amount, secret } = req.body;
+
+  // Basic security check (You should set ADMIN_SECRET in your .env file)
+  const ADMIN_SECRET = process.env.ADMIN_SECRET || 'futo-admin-secret';
+
+  if (secret !== ADMIN_SECRET) {
+    return res.status(403).json({ message: "Unauthorized: Invalid Secret Key" });
+  }
+
+  try {
+    // Update the first fee record found, or create if empty
+    const fee = await Fee.findOneAndUpdate({}, { amount: amount }, { new: true, upsert: true });
+    res.status(200).json({ message: "Fee updated successfully", amount: fee.amount });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to update fee", error: error.message });
+  }
+};
+
+module.exports = { markAsPaid, getCurrentFee, updateFee };

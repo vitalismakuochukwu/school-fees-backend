@@ -25,7 +25,7 @@ const updateFee = async (req, res) => {
   const targetLevel = level || "Year 1";
 
   // Security check
-  const ADMIN_SECRET = process.env.ADMIN_SECRET || 'futo-admin-secret';
+  const ADMIN_SECRET = process.env.ADMIN_SECRET || "fallback-secret";
   if (secret !== ADMIN_SECRET) {
     return res.status(403).json({ message: "Unauthorized: Invalid Secret Key" });
   }

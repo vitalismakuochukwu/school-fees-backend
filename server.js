@@ -12,6 +12,8 @@ const jwt = require('jsonwebtoken'); // Required for bridging sessions to tokens
 const authRoutes = require('./routes/authRoutes');
 const feeRoutes = require('./routes/feeRoutes');
 const Student = require('./models/Student');
+const adminRoutes = require('./routes/adminRoutes'); // Add this line
+
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -174,11 +176,11 @@ app.get('/logout', (req, res, next) => {
   });
 });
 
-// 8. OTHER API ROUTES
+// Section 8 (Update this part)
+
 app.use('/api', authRoutes); 
 app.use('/api/fees', feeRoutes);
-
-
+app.use('/api/admin', adminRoutes); // Add this line to fix the 404!
 // 9. START SERVER
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);

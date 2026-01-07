@@ -259,44 +259,112 @@ const Student = require('../models/Student');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// 1. Setup the transporter (Fixed for Render/Gmail Port 465)
+const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true, // Use SSL
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  },
+  tls: {
+    rejectUnauthorized: false
+  }
+});
 
 // Helper: Send Verification Email
 async function sendVerificationEmail(userEmail, verificationCode) {
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: userEmail,
+    subject: 'Your 12-Digit Activation Code',
+    html: `
+      <div style="font-family: Arial, sans-serif; border: 2px solid #ca8a04; padding: 20px; border-radius: 10px;">
+        <h2 style="color: #ca8a04;">FUTO School Fees Portal</h2>
+        <p>Your 12-digit activation code is:</p>
+        <h1 style="background: #fefce8; padding: 10px; text-align: center; letter-spacing: 4px; color: #1f2937;">${verificationCode}</h1>
+      </div>`
+  };
   try {
-    await resend.emails.send({
-      from: 'FUTO Portal <onboarding@resend.dev>',
-      to: userEmail,
-      subject: 'Your 12-Digit Activation Code',
-      html: `
-        <div style="font-family: Arial, sans-serif; border: 2px solid #ca8a04; padding: 20px; border-radius: 10px;">
-          <h2 style="color: #ca8a04;">FUTO School Fees Portal</h2>
-          <p>Your 12-digit activation code is:</p>
-          <h1 style="background: #fefce8; padding: 10px; text-align: center; letter-spacing: 4px; color: #1f2937;">${verificationCode}</h1>
-        </div>`
-    });
+    await transporter.sendMail(mailOptions);
     console.log("✅ Email sent successfully to: " + userEmail);
   } catch (error) {
-    console.error("❌ Resend API Error:", error);
+    console.error("❌ Error sending email:", error);
   }
 }
 
 // Helper: Send Reset Password Email
 async function sendResetPasswordEmail(userEmail, resetToken) {
-  const resetLink = `http://localhost:5173/reset-password/${resetToken}`; 
+  const resetLink = `https://school-fees-backend.onrender.com/reset-password/${resetToken}`; 
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: userEmail,
+    subject: 'Password Reset Request',
+    html: `<p>Click the link to reset your password: <a href="${resetLink}">${resetLink}</a></p>`
+  };
   try {
-    await resend.emails.send({
-      from: 'FUTO Portal <onboarding@resend.dev>',
-      to: userEmail,
-      subject: 'Password Reset Request',
-      html: `<p>Click the link to reset your password: <a href="${resetLink}">${resetLink}</a></p>`
-    });
+    await transporter.sendMail(mailOptions);
   } catch (error) {
     console.error("❌ Reset Email Error:", error);
   }
 }
+
+// Helper: Send Payment Receipt Email
+const sendReceipt = async (req, res) => {
+  try {
+    const { email, receiptDetails, studentName } = req.body;
+    
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: `Payment Receipt - ${receiptDetails.reference}`,
+      html: `
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+          <div style="background-color: #15803d; padding: 20px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 24px;">FUTO PAY</h1>
+            <p style="color: #dcfce7; margin: 5px 0 0;">Official Payment Receipt</p>
+          </div>
+          <div style="padding: 30px; background-color: #ffffff;">
+            <p>Dear <strong>${studentName}</strong>,</p>
+            <p>This email confirms that your payment was successful.</p>
+            
+            <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+              <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 10px 0; color: #6b7280;">Transaction Ref (RRR)</td>
+                <td style="padding: 10px 0; font-weight: bold; text-align: right;">${receiptDetails.reference}</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 10px 0; color: #6b7280;">Session</td>
+                <td style="padding: 10px 0; font-weight: bold; text-align: right;">${receiptDetails.session}</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 10px 0; color: #6b7280;">Date Paid</td>
+                <td style="padding: 10px 0; font-weight: bold; text-align: right;">${receiptDetails.date}</td>
+              </tr>
+              <tr style="background-color: #f0fdf4;">
+                <td style="padding: 15px 10px; color: #166534; font-weight: bold;">Total Amount Paid</td>
+                <td style="padding: 15px 10px; color: #166534; font-weight: bold; text-align: right; font-size: 18px;">₦${receiptDetails.amount.toLocaleString()}</td>
+              </tr>
+            </table>
+
+            <p style="font-size: 12px; color: #9ca3af; text-align: center; margin-top: 30px;">
+              Please retain this email for your records.
+            </p>
+          </div>
+        </div>
+      `
+    };
+
+    await transporter.sendMail(mailOptions);
+    res.status(200).json({ message: 'Receipt sent successfully' });
+  } catch (error) {
+    console.error("❌ Error sending receipt:", error);
+    res.status(500).json({ message: 'Failed to send receipt email' });
+  }
+};
 
 // Register Controller
 const register = async (req, res) => {
@@ -429,4 +497,4 @@ const updateProfile = async (req, res) => {
   }
 };
 
-module.exports = { register, login, verifyEmail, resendVerificationCode, forgotPassword, getProfile, updateProfile };
+module.exports = { register, login, verifyEmail, resendVerificationCode, forgotPassword, getProfile, updateProfile, sendReceipt };

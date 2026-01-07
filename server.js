@@ -446,6 +446,7 @@ app.get('/logout', (req, res, next) => {
 app.use('/api', authRoutes); 
 app.use('/api', feeRoutes);
 
+
 // 9. START SERVER
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);

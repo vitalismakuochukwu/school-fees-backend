@@ -1,4 +1,5 @@
 const Student = require('../models/Student');
+const Fee = require('../models/Fee');
 
 const markAsPaid = async (req, res) => {
   const { regNo, level, amountPaid, reference } = req.body;
@@ -30,6 +31,17 @@ const markAsPaid = async (req, res) => {
   }
 };
 
-module.exports = { markAsPaid };
+const getCurrentFee = async (req, res) => {
+  try {
+    // Get the first fee record, or create one if it doesn't exist
+    let fee = await Fee.findOne();
+    if (!fee) {
+      fee = await Fee.create({ amount: 45500 });
+    }
+    res.status(200).json(fee);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch fee" });
+  }
+};
 
-
+module.exports = { markAsPaid, getCurrentFee };

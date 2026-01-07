@@ -1,8 +1,11 @@
 const mongoose = require('mongoose');
 
-const FeeSchema = new mongoose.Schema({
-  amount: { type: Number, required: true },
-  lastUpdated: { type: Date, default: Date.now }
-});
+const feeSchema = new mongoose.Schema({
+  amount: {
+    type: Number,
+    required: true,
+    default: 45500
+  }
+}, { timestamps: true });
 
-module.exports = mongoose.model('Fee', FeeSchema);
+module.exports = mongoose.model('Fee', feeSchema);

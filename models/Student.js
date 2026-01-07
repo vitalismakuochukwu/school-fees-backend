@@ -1,27 +1,38 @@
 const mongoose = require('mongoose');
 
-const studentSchema = new mongoose.Schema({
-  fullName: { type: String, required: true },
-  regNo: { type: String, unique: true, required: true },
-  department: { type: String },
-  faculty: { type: String },
-  email: { type: String, required: true, unique: true },
-  password: { type: String },
-  
-  // Auth & Verification Fields
-  isActivated: { type: Boolean, default: false },
-  activationCode: { type: String },
-  googleId: { type: String },
-  resetPasswordToken: { type: String },
-  resetPasswordExpire: { type: Date },
+const paymentSchema = new mongoose.Schema({
+  level: { type: String, required: true },
+  amount: { type: Number, required: true },
+  reference: { type: String, required: true },
+  date: { type: Date, default: Date.now },
+  status: { type: String, default: 'Successful' }
+});
 
-  // Payment Records
-  payments: [{
-    level: String,      // e.g., "100L", "Year 1"
-    amount: Number,
-    reference: String,
-    date: { type: Date, default: Date.now }
-  }]
+const studentSchema = new mongoose.Schema({
+  fullName: {
+    type: String,
+    required: true
+  },
+  email: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  password: {
+    type: String
+  },
+  regNo: {
+    type: String,
+    default: "NOT_SET"
+  },
+  department: {
+    type: String
+  },
+  faculty: {
+    type: String
+  },
+  payments: [paymentSchema],
+  googleId: { type: String }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Student', studentSchema);

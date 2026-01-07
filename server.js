@@ -58,25 +58,25 @@ passport.use(new GoogleStrategy({
     try {
       const email = profile.emails[0].value;
       
-      // Using findOneAndUpdate with $setOnInsert to handle RegNo/Dept/Faculty
-      let student = await Student.findOneAndUpdate(
-        { email: email },
-        { 
-          $set: { 
-            googleId: profile.id, 
-            fullName: profile.displayName,
-            isActivated: true 
-          },
-          $setOnInsert: { 
-            // These fields only save the VERY FIRST time the user signs up
-            regNo: "NOT_SET_" + profile.id.slice(-4), 
-            department: "Please Update",
-            faculty: "Please Update",
-            password: Math.random().toString(36).slice(-10) // Dummy password for safety
-          }
-        },
-        { new: true, upsert: true, setDefaultsOnInsert: true }
-      );
+      // 1. Search for a student with this email FIRST
+      let student = await Student.findOne({ email: email });
+
+      if (student) {
+        // 2. If they exist, just add their googleId so they can use Google next time too
+        if (!student.googleId) {
+          student.googleId = profile.id;
+          await student.save();
+        }
+      } else {
+        // 3. Only if the email DOES NOT exist, create a new student
+        student = await Student.create({
+          email: email,
+          fullName: profile.displayName,
+          googleId: profile.id,
+          regNo: "NOT_SET_" + Date.now(), // This will only happen for brand new users
+          isActivated: true
+        });
+      }
 
       return done(null, student);
     } catch (err) {

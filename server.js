@@ -12,6 +12,7 @@ const jwt = require('jsonwebtoken'); // Required for bridging sessions to tokens
 const authRoutes = require('./routes/authRoutes');
 const feeRoutes = require('./routes/feeRoutes');
 const Student = require('./models/Student');
+const healthRoutes = require('./routes/healthRoutes');
 const adminRoutes = require('./routes/adminRoutes'); // Add this line
 
 
@@ -26,9 +27,15 @@ app.set('trust proxy', 1);
 //   origin: 'http://localhost:5173', 
 //   credentials: true 
 // }));
+// app.use(cors({
+//   origin: true, // This allows your frontend to connect regardless of the URL
+//   credentials: true 
+// }));
+// This allows your frontend to talk to your backend
 app.use(cors({
-  origin: true, // This allows your frontend to connect regardless of the URL
-  credentials: true 
+  origin: '*', // For your assignment, '*' allows all origins.
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type']
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -179,6 +186,19 @@ app.get('/logout', (req, res, next) => {
     res.redirect('http://localhost:5173/');
   });
 });
+// --- 3. YOUR PAYMENT ROUTE ---
+app.post('/api/fees/mark-as-paid', async (req, res) => {
+  try {
+    const { regNo, level, reference, amountPaid } = req.body;
+    
+    // Logic to save to your database (MongoDB/PostgreSQL) goes here
+    console.log(`Payment received for ${regNo}: ₦${amountPaid}`);
+
+    res.status(200).json({ message: "Payment verified and recorded!" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error saving payment" });
+  }
+});
 
 // Section 8 (Update this part)
 
@@ -186,6 +206,7 @@ app.use('/api', authRoutes);
 app.use('/api/fees', feeRoutes);
 app.use('/api/admin', adminRoutes); // Add this line to fix the 404!
 // 9. START SERVER
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });

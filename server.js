@@ -33,9 +33,10 @@ app.set('trust proxy', 1);
 // }));
 // This allows your frontend to talk to your backend
 app.use(cors({
-  origin: '*', // For your assignment, '*' allows all origins.
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type']
+  origin: true, // This allows your frontend URL to connect
+  credentials: true, // This allows the "session check" to work
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

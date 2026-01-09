@@ -1,3 +1,4 @@
+// 
 const mongoose = require('mongoose');
 
 const paymentSchema = new mongoose.Schema({
@@ -16,7 +17,8 @@ const studentSchema = new mongoose.Schema({
   email: {
     type: String,
     required: true,
-    unique: true
+    unique: true,
+    lowercase: true // This helps match email regardless of Uppercase
   },
   password: {
     type: String
@@ -31,8 +33,14 @@ const studentSchema = new mongoose.Schema({
   faculty: {
     type: String
   },
+  // --- ADD THESE TWO LINES ---
+  isActivated: { type: Boolean, default: false },
+  activationCode: { type: String },
+  // ---------------------------
   payments: [paymentSchema],
-  googleId: { type: String }
+  googleId: { type: String },
+  resetPasswordToken: String,
+  resetPasswordExpire: Date
 }, { timestamps: true });
 
 module.exports = mongoose.model('Student', studentSchema);

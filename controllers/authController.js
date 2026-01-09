@@ -379,19 +379,53 @@ const register = async (req, res) => {
   }
 };
 
-// Verify Email Controller
+// // Verify Email Controller
+// const verifyEmail = async (req, res) => {
+//   try {
+//     const { email, code } = req.body;
+//     const student = await Student.findOne({ email });
+//     if (!student || student.activationCode !== code) {
+//         return res.status(400).json({ message: 'Invalid code or user not found' });
+//     }
+//     student.isActivated = true;
+//     student.activationCode = undefined;
+//     await student.save();
+//     res.status(200).json({ message: 'Account activated successfully.' });
+//   } catch (error) {
+//     res.status(500).json({ message: 'Verification error' });
+//   }
+// };
 const verifyEmail = async (req, res) => {
   try {
     const { email, code } = req.body;
-    const student = await Student.findOne({ email });
-    if (!student || student.activationCode !== code) {
-        return res.status(400).json({ message: 'Invalid code or user not found' });
+
+    // 1. Force lowercase to prevent "User not found" errors
+    const student = await Student.findOne({ email: email.toLowerCase() });
+
+    console.log(`Checking verification for: ${email}`);
+
+    if (!student) {
+      console.log("❌ Error: No student found with that email.");
+      return res.status(400).json({ message: 'User not found' });
     }
+
+    // 2. Check the code
+    if (student.activationCode !== code) {
+      console.log(`❌ Error: Code mismatch. DB has: ${student.activationCode}, User sent: ${code}`);
+      return res.status(400).json({ message: 'Invalid code' });
+    }
+
+    // 3. Update the fields
     student.isActivated = true;
     student.activationCode = undefined;
+
+    // 4. Save to MongoDB
     await student.save();
+    console.log("✅ Success: Student record updated and saved.");
+
     res.status(200).json({ message: 'Account activated successfully.' });
   } catch (error) {
+    console.error('❌ Verification error:', error);
     res.status(500).json({ message: 'Verification error' });
   }
 };

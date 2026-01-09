@@ -125,9 +125,9 @@ mongoose.connect(process.env.MONGO_URI)
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
 app.get('/auth/google/callback', 
-  passport.authenticate('google', { failureRedirect: 'http://localhost:5173/login' }),
+  passport.authenticate('google', { failureRedirect: 'https://school-fees-frontend-iota.vercel.app/login' }),
   (req, res) => {
-    res.redirect('http://localhost:5173/dashboard'); 
+    res.redirect('https://school-fees-frontend-iota.vercel.app/dashboard'); 
 });
 
 // // UPDATED ME ROUTE: Now generates a JWT token for the session user
@@ -184,21 +184,8 @@ app.get('/logout', (req, res, next) => {
   req.logout((err) => {
     if (err) return next(err);
     req.session.destroy();
-    res.redirect('http://localhost:5173/');
+    res.redirect('https://school-fees-frontend-iota.vercel.app/');
   });
-});
-// --- 3. YOUR PAYMENT ROUTE ---
-app.post('/api/fees/mark-as-paid', async (req, res) => {
-  try {
-    const { regNo, level, reference, amountPaid } = req.body;
-    
-    // Logic to save to your database (MongoDB/PostgreSQL) goes here
-    console.log(`Payment received for ${regNo}: ₦${amountPaid}`);
-
-    res.status(200).json({ message: "Payment verified and recorded!" });
-  } catch (error) {
-    res.status(500).json({ message: "Server error saving payment" });
-  }
 });
 
 // Section 8 (Update this part)
